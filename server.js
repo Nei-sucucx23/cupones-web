@@ -13,13 +13,7 @@ const BASE_URL = process.env.BASE_URL || "https://cupones-web-production.up.rail
 // ======================
 // 🔌 CONEXIÓN MYSQL (CORREGIDA)
 // ======================
-const db = mysql.createConnection({
-  host: process.env.MYSQLHOST,
-  user: process.env.MYSQLUSER,
-  password: process.env.MYSQLPASSWORD,
-  database: process.env.MYSQLDATABASE,
-  port: process.env.MYSQLPORT
-});
+const db = mysql.createConnection(process.env.MYSQL_URL);
 
 // conectar
 db.connect((err) => {
