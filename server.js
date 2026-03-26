@@ -8,7 +8,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(__dirname));
 
 // 🌍 PEGA TU LINK NGROK AQUÍ
-const BASE_URL = "https://TU-LINK-AQUI.ngrok-free.dev";
+const BASE_URL = const BASE_URL = "https://carlos-suppling-wittingly.ngrok-free.dev";
 
 const db = mysql.createConnection({
   host: "127.0.0.1",
@@ -142,12 +142,8 @@ app.get("/validar/:codigo", async (req, res) => {
     return res.send("<h2>⚠️ Este cupón ya fue usado</h2>");
   }
 
-  await db.promise().query(
-    "UPDATE cupones SET usado=1 WHERE id=?",
-    [cupon.id]
-  );
+  // ❗ IMPORTANTE: NO marcar usado aquí
 
-  // PDF
   const doc = new PDFDocument({
     size: [300, 150],
     margin: 0
@@ -158,14 +154,14 @@ app.get("/validar/:codigo", async (req, res) => {
 
   doc.pipe(res);
 
-  // FONDO PERSONALIZADO
+  // FONDO
   try {
     doc.image("fondo.jpg", 0, 0, { width: 300, height: 150 });
   } catch {
     doc.rect(0, 0, 300, 150).fill("#111");
   }
 
-  // OSCURECER FONDO
+  // OVERLAY OSCURO
   doc.rect(0, 0, 300, 150)
     .fillOpacity(0.4)
     .fill("black");
@@ -177,7 +173,7 @@ app.get("/validar/:codigo", async (req, res) => {
     .lineWidth(2)
     .stroke("#FFD700");
 
-  // LOGO (PNG TRANSPARENTE)
+  // LOGO (TRANSPARENTE PNG)
   try {
     doc.image("logo.png", 15, 15, { width: 40 });
   } catch {}
