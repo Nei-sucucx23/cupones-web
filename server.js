@@ -7,27 +7,28 @@ const app = express();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(__dirname));
 
-// 🌍 PEGA TU LINK NGROK AQUÍ
-const BASE_URL = process.env.BASE_URL || "http://localhost:3000";
+// 🌍 USA TU DOMINIO DE RAILWAY
+const BASE_URL = process.env.BASE_URL || "https://cupones-web-production.up.railway.app";
 
+// ======================
+// 🔌 CONEXIÓN MYSQL (CORREGIDA)
+// ======================
 const db = mysql.createConnection({
-  host: process.env.MYSQLHOST || process.env.DB_HOST,
-  user: process.env.MYSQLUSER || process.env.DB_USER,
-  password: process.env.MYSQLPASSWORD || process.env.DB_PASSWORD,
-  database: process.env.MYSQLDATABASE || process.env.DB_NAME,
-  port: process.env.MYSQLPORT || process.env.DB_PORT
+  host: process.env.MYSQLHOST,
+  user: process.env.MYSQLUSER,
+  password: process.env.MYSQLPASSWORD,
+  database: process.env.MYSQLDATABASE,
+  port: process.env.MYSQLPORT
 });
 
+// conectar
 db.connect((err) => {
   if (err) {
-    console.log("❌ ERROR DB:", err);
-  } else {
-    console.log("✅ CONECTADO A MYSQL");
+    console.error("❌ Error conectando a MySQL:", err);
+    process.exit(1);
   }
+  console.log("✅ Conectado a MySQL");
 });
-
-console.log("HOST:", process.env.MYSQLHOST);
-console.log("USER:", process.env.MYSQLUSER);
 
 // ======================
 // FORMULARIO
@@ -100,12 +101,12 @@ app.post("/generar", async (req, res) => {
 
     for (let i = 0; i < cantidad; i++) {
 
-      const result = await db.promise().query(
+      const [result] = await db.promise().query(
         "INSERT INTO cupones(cliente_id, codigo, usado) VALUES (?, ?, 0)",
         [1, "temp"]
       );
 
-      const id = result[0].insertId;
+      const id = result.insertId;
       const codigo = "2026" + String(id).padStart(3, "0");
 
       await db.promise().query(
@@ -128,7 +129,7 @@ app.post("/generar", async (req, res) => {
     res.send(html);
 
   } catch (error) {
-    console.log(error);
+    console.error("❌ Error generando cupones:", error);
     res.send("Error generando cupones");
   }
 });
@@ -137,90 +138,87 @@ app.post("/generar", async (req, res) => {
 // VALIDAR + PDF
 // ======================
 app.get("/validar/:codigo", async (req, res) => {
-  const codigo = req.params.codigo;
-
-  const [rows] = await db.promise().query(
-    "SELECT * FROM cupones WHERE codigo=?",
-    [codigo]
-  );
-
-  if (rows.length === 0) {
-    return res.send("<h2>❌ Cupón no válido</h2>");
-  }
-
-  const cupon = rows[0];
-
-  if (cupon.usado == 1) {
-    return res.send("<h2>⚠️ Este cupón ya fue usado</h2>");
-  }
-
-  // ❗ IMPORTANTE: NO marcar usado aquí
-
-  const doc = new PDFDocument({
-    size: [300, 150],
-    margin: 0
-  });
-
-  res.setHeader("Content-Type", "application/pdf");
-  res.setHeader("Content-Disposition", `attachment; filename=${codigo}.pdf`);
-
-  doc.pipe(res);
-
-  // FONDO
   try {
-    doc.image("fondo.png", 0, 0, { width: 300, height: 150 });
-  } catch {
-    doc.rect(0, 0, 300, 150).fill("#111");
+    const codigo = req.params.codigo;
+
+    const [rows] = await db.promise().query(
+      "SELECT * FROM cupones WHERE codigo=?",
+      [codigo]
+    );
+
+    if (rows.length === 0) {
+      return res.send("<h2>❌ Cupón no válido</h2>");
+    }
+
+    const cupon = rows[0];
+
+    if (cupon.usado == 1) {
+      return res.send("<h2>⚠️ Este cupón ya fue usado</h2>");
+    }
+
+    const doc = new PDFDocument({
+      size: [300, 150],
+      margin: 0
+    });
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename=${codigo}.pdf`);
+
+    doc.pipe(res);
+
+    // fondo
+    try {
+      doc.image("fondo.jpg", 0, 0, { width: 300, height: 150 });
+    } catch {
+      doc.rect(0, 0, 300, 150).fill("#111");
+    }
+
+    doc.rect(0, 0, 300, 150)
+      .fillOpacity(0.4)
+      .fill("black");
+
+    doc.fillOpacity(1);
+
+    doc.rect(5, 5, 290, 140)
+      .lineWidth(2)
+      .stroke("#FFD700");
+
+    try {
+      doc.image("logo.png", 15, 15, { width: 40 });
+    } catch {}
+
+    doc.fillColor("#FFD700")
+      .fontSize(14)
+      .text("CUPÓN OFICIAL", 70, 20);
+
+    doc.fillColor("white")
+      .fontSize(9)
+      .text("EVENTO PROMOCIONAL", 70, 40);
+
+    doc.moveTo(10, 60).lineTo(290, 60).stroke("white");
+
+    doc.fillColor("#FFD700")
+      .fontSize(22)
+      .text(codigo, 20, 75);
+
+    doc.fillColor("white")
+      .fontSize(8)
+      .text("Escanea para reclamar tu premio", 20, 110);
+
+    for (let i = 0; i < 300; i += 10) {
+      doc.circle(i, 148, 2).fill("#FFD700");
+    }
+
+    doc.end();
+
+  } catch (error) {
+    console.error("❌ Error validando cupón:", error);
+    res.send("Error interno");
   }
-
-  // OVERLAY OSCURO
-  doc.rect(0, 0, 300, 150)
-    .fillOpacity(0.4)
-    .fill("black");
-
-  doc.fillOpacity(1);
-
-  // BORDE
-  doc.rect(5, 5, 290, 140)
-    .lineWidth(2)
-    .stroke("#FFD700");
-
-  // LOGO (TRANSPARENTE PNG)
-  try {
-    doc.image("logo.png", 15, 15, { width: 40 });
-  } catch {}
-
-  // TITULO
-  doc.fillColor("#FFD700")
-    .fontSize(14)
-    .text("CUPÓN OFICIAL", 70, 20);
-
-  // SUBTITULO
-  doc.fillColor("white")
-    .fontSize(9)
-    .text("EVENTO PROMOCIONAL", 70, 40);
-
-  // LINEA
-  doc.moveTo(10, 60).lineTo(290, 60).stroke("white");
-
-  // CODIGO
-  doc.fillColor("#FFD700")
-    .fontSize(22)
-    .text(codigo, 20, 75);
-
-  // TEXTO
-  doc.fillColor("white")
-    .fontSize(8)
-    .text("Escanea para reclamar tu premio", 20, 110);
-
-  // EFECTO BOLETO
-  for (let i = 0; i < 300; i += 10) {
-    doc.circle(i, 148, 2).fill("#FFD700");
-  }
-
-  doc.end();
 });
 
+// ======================
+// 🚀 PUERTO CORRECTO PARA RAILWAY
 // ======================
 const PORT = process.env.PORT || 3000;
 
