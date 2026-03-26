@@ -8,7 +8,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(__dirname));
 
 // 🌍 PEGA TU LINK NGROK AQUÍ
-const BASE_URL = "https://carlos-supplying-wittingly.ngrok-free.dev";
+const BASE_URL = process.env.BASE_URL || "http://localhost:3000";
 
 const db = mysql.createConnection({
   host: process.env.MYSQLHOST || process.env.DB_HOST,
@@ -168,7 +168,7 @@ app.get("/validar/:codigo", async (req, res) => {
 
   // FONDO
   try {
-    doc.image("fondo.jpg", 0, 0, { width: 300, height: 150 });
+    doc.image("fondo.png", 0, 0, { width: 300, height: 150 });
   } catch {
     doc.rect(0, 0, 300, 150).fill("#111");
   }
@@ -222,6 +222,8 @@ app.get("/validar/:codigo", async (req, res) => {
 });
 
 // ======================
-app.listen(3000, () => {
-  console.log("🚀 Servidor en http://localhost:3000");
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log("🚀 Servidor corriendo en puerto", PORT);
 });
