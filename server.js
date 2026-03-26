@@ -11,12 +11,12 @@ app.use(express.static(__dirname));
 const BASE_URL = "https://carlos-supplying-wittingly.ngrok-free.dev";
 
 const db = mysql.createConnection({
-  host: "127.0.0.1",
-  user: "root",
-  password: "fr@ctales",
-  database: "cupones_db"
+  host: process.env.MYSQLHOST,
+  user: process.env.MYSQLUSER,
+  password: process.env.MYSQLPASSWORD,
+  database: process.env.MYSQLDATABASE,
+  port: process.env.MYSQLPORT
 });
-
 // ======================
 // FORMULARIO
 // ======================
