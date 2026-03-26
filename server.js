@@ -9,6 +9,7 @@ app.use(express.static(__dirname));
 
 // 🌍 PEGA TU LINK NGROK AQUÍ
 const BASE_URL = "https://carlos-supplying-wittingly.ngrok-free.dev";
+
 const db = mysql.createConnection({
   host: "127.0.0.1",
   user: "root",
