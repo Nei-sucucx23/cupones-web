@@ -8,8 +8,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(__dirname));
 
 // 🌍 PEGA TU LINK NGROK AQUÍ
-const BASE_URL = const BASE_URL = "https://carlos-suppling-wittingly.ngrok-free.dev";
-
+const BASE_URL = "https://carlos-supplying-wittingly.ngrok-free.dev";
 const db = mysql.createConnection({
   host: "127.0.0.1",
   user: "root",
