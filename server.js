@@ -1,3 +1,5 @@
+process.on('uncaughtException', console.error);
+process.on('unhandledRejection', console.error);
 const express = require("express");
 const mysql = require("mysql2");
 const QRCode = require("qrcode");
@@ -214,7 +216,7 @@ app.get("/validar/:codigo", async (req, res) => {
 // ======================
 // 🚀 PUERTO CORRECTO PARA RAILWAY
 // ======================
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 
 app.listen(PORT, () => {
   console.log("🚀 Servidor corriendo en puerto", PORT);
