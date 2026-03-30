@@ -10,19 +10,13 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(__dirname));
 
 // ======================
-// MYSQL
+// MYSQL (RAILWAY FIX)
 // ======================
- const db = mysql.createConnection({
-  host: process.env.MYSQLHOST,
-  user: process.env.MYSQLUSER,
-  password: process.env.MYSQLPASSWORD,
-  database: process.env.MYSQLDATABASE,
-  port: process.env.MYSQLPORT
-});
+const db = mysql.createConnection(process.env.MYSQL_URL);
 
 db.connect(err => {
   if (err) {
-    console.error("❌ MySQL:", err);
+    console.error("❌ MySQL error:", err);
     process.exit(1);
   }
   console.log("✅ MySQL conectado");
@@ -34,9 +28,6 @@ db.connect(err => {
 app.get("/", (req, res) => {
   res.send(`
   <html>
-  <head>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
-  </head>
   <body style="background:#000;color:white;text-align:center;font-family:Poppins">
     <h2>🎟️ Generar Cupón</h2>
     <form method="POST" action="/generar">
@@ -86,34 +77,14 @@ app.post("/generar", async (req, res) => {
       );
 
       html += `
-      <div style="
-        width:420px;
-        margin:20px auto;
-        padding:20px;
-        border:3px solid gold;
-        border-radius:20px;
-        background:url('fondo.jpg') center/cover;
-        color:white;
-      ">
+      <div style="width:420px;margin:20px auto;padding:20px;border:3px solid gold;border-radius:20px;background:url('fondo.jpg') center/cover;color:white;">
         <div style="background:rgba(0,0,0,0.6);padding:15px;border-radius:15px">
-
           <h2 style="color:gold">CUPÓN OFICIAL</h2>
-
           <h1 style="color:#FFD700">${codigo}</h1>
-
           <p>${nombre}</p>
-
-          <a href="/pdf/${codigo}" style="
-            background:gold;
-            color:black;
-            padding:10px 20px;
-            border-radius:10px;
-            text-decoration:none;
-            font-weight:bold;
-          ">
+          <a href="/pdf/${codigo}" style="background:gold;color:black;padding:10px 20px;border-radius:10px;text-decoration:none;font-weight:bold;">
             Descargar Cupón
           </a>
-
         </div>
       </div>
       `;
@@ -158,16 +129,15 @@ app.get("/pdf/:codigo", async (req, res) => {
 
     doc.pipe(res);
 
-    // Fuentes
+    // ⚠️ IMPORTANTE: verifica que estos archivos EXISTAN en Railway
     doc.registerFont('poppins', './fonts/Poppins-Regular.ttf');
     doc.registerFont('poppins-bold', './fonts/Poppins-Bold.ttf');
 
-    // Fondo
+    // Fondo (verifica que exista fondo.jpg)
     doc.image("fondo.jpg", 0, 0, { width: 500 });
 
     let y = 70;
 
-    // título
     doc.font('poppins-bold')
       .fillColor("#ffffff")
       .fontSize(22)
@@ -175,20 +145,17 @@ app.get("/pdf/:codigo", async (req, res) => {
 
     y += 30;
 
-    // código
     doc.font('poppins-bold')
       .fontSize(28)
       .text(codigo, 0, y, { align: "center" });
 
     y += 30;
 
-    // cliente
     doc.font('poppins-bold')
       .fillColor("white")
       .fontSize(14)
       .text(c.cliente, 0, y, { align: "center" });
 
-    // 🔥 Cerrar PDF
     doc.end();
 
   } catch (error) {
@@ -220,7 +187,6 @@ app.get("/admin", async (req, res) => {
   res.send(`
   <body style="background:#000;color:white;font-family:Poppins;text-align:center">
     <h1>📊 Panel Admin PRO</h1>
-
     <table style="width:95%;margin:auto;border-collapse:collapse">
       <tr style="background:gold;color:black">
         <th>Código</th>
@@ -233,14 +199,11 @@ app.get("/admin", async (req, res) => {
       </tr>
       ${lista}
     </table>
-
     <br><a href="/" style="color:gold">Volver</a>
   </body>
   `);
 });
 
-// ======================
-// ELIMINAR
 // ======================
 app.get("/delete/:id", async (req, res) => {
   await db.promise().query("DELETE FROM cupones WHERE id=?", [req.params.id]);
