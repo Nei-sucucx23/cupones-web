@@ -10,23 +10,28 @@ const app = express();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(__dirname));
 
+
 // ======================
-// MYSQL (LOCAL + RAILWAY)
+// MYSQL UNIVERSAL (LOCAL + RAILWAY)
 // ======================
 let db;
 
 if (process.env.MYSQL_URL) {
+  // 🔥 PRODUCCIÓN (Railway)
+  console.log("🌍 Usando DB de Railway");
+
   db = mysql.createConnection(process.env.MYSQL_URL);
-  console.log("🌍 Railway DB");
+
 } else {
+  // 💻 LOCAL (tu PC)
+  console.log("💻 Usando DB local");
+
   db = mysql.createConnection({
     host: "localhost",
     user: "root",
-    password: "",
-    database: "cupones",
-    port: 3306
+    password: "fr@ctales", // ⚠️ CAMBIA ESTO
+    database: "cupones_db"
   });
-  console.log("💻 Local DB");
 }
 
 db.connect(err => {
@@ -37,14 +42,16 @@ db.connect(err => {
   console.log("✅ MySQL conectado");
 });
 
+
 // ======================
-// ROOT (OBLIGATORIO)
+// HOME
 // ======================
 app.get("/", (req, res) => {
   res.send(`
   <html>
   <body style="background:#000;color:white;text-align:center;font-family:sans-serif">
     <h2>🎟️ Generar Cupón</h2>
+
     <form method="POST" action="/generar">
       <input name="nombre" placeholder="Nombre" required><br><br>
       <input name="telefono" placeholder="Teléfono" required><br><br>
@@ -52,12 +59,14 @@ app.get("/", (req, res) => {
       <input name="compra" placeholder="Monto compra" required><br><br>
       <button>Generar</button>
     </form>
+
     <br>
     <a href="/admin" style="color:gold;">Panel Admin</a>
   </body>
   </html>
   `);
 });
+
 
 // ======================
 // GENERAR CUPONES
@@ -96,7 +105,15 @@ app.post("/generar", async (req, res) => {
         <h2 style="color:gold">CUPÓN OFICIAL</h2>
         <h1 style="color:#FFD700">${codigo}</h1>
         <p>${nombre}</p>
-        <a href="/pdf/${codigo}" style="background:gold;color:black;padding:10px 20px;border-radius:10px;text-decoration:none;font-weight:bold;">
+
+        <a href="/pdf/${codigo}" style="
+          background:gold;
+          color:black;
+          padding:10px 20px;
+          border-radius:10px;
+          text-decoration:none;
+          font-weight:bold;
+        ">
           Descargar Cupón
         </a>
       </div>
@@ -110,6 +127,7 @@ app.post("/generar", async (req, res) => {
     res.send("Error generando");
   }
 });
+
 
 // ======================
 // PDF SEGURO
@@ -150,7 +168,7 @@ app.get("/pdf/:codigo", async (req, res) => {
       doc.font('Helvetica');
     }
 
-    // Fondo opcional
+    // Fondo seguro
     if (fs.existsSync("./fondo.jpg")) {
       doc.image("fondo.jpg", 0, 0, { width: 500 });
     }
@@ -179,6 +197,7 @@ app.get("/pdf/:codigo", async (req, res) => {
   }
 });
 
+
 // ======================
 // ADMIN
 // ======================
@@ -202,6 +221,7 @@ app.get("/admin", async (req, res) => {
   res.send(`
   <body style="background:#000;color:white;font-family:sans-serif;text-align:center">
     <h1>📊 Panel Admin</h1>
+
     <table style="width:95%;margin:auto;border-collapse:collapse">
       <tr style="background:gold;color:black">
         <th>Código</th>
@@ -214,16 +234,19 @@ app.get("/admin", async (req, res) => {
       </tr>
       ${lista}
     </table>
+
     <br><a href="/" style="color:gold">Volver</a>
   </body>
   `);
 });
+
 
 // ======================
 app.get("/delete/:id", async (req, res) => {
   await db.promise().query("DELETE FROM cupones WHERE id=?", [req.params.id]);
   res.redirect("/admin");
 });
+
 
 // ======================
 const PORT = process.env.PORT || 8080;
