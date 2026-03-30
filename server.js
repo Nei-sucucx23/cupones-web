@@ -1,29 +1,30 @@
 process.on('uncaughtException', console.error);
 process.on('unhandledRejection', console.error);
+
 const express = require("express");
 const mysql = require("mysql2");
-const QRCode = require("qrcode");
 const PDFDocument = require("pdfkit");
 
 const app = express();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(__dirname));
 
-// 🌍 USA TU DOMINIO DE RAILWAY
-const BASE_URL = process.env.BASE_URL || "https://cupones-web-production.up.railway.app";
-
 // ======================
-// 🔌 CONEXIÓN MYSQL (CORREGIDA)
+// MYSQL
 // ======================
-const db = mysql.createConnection(process.env.MYSQL_URL);
+const db = mysql.createConnection({
+  host: "127.0.0.1",
+  user: "root",
+  password: "fr@ctales",
+  database: "cupones_db"
+});
 
-// conectar
-db.connect((err) => {
+db.connect(err => {
   if (err) {
-    console.error("❌ Error conectando a MySQL:", err);
+    console.error("❌ MySQL:", err);
     process.exit(1);
   }
-  console.log("✅ Conectado a MySQL");
+  console.log("✅ MySQL conectado");
 });
 
 // ======================
@@ -31,49 +32,23 @@ db.connect((err) => {
 // ======================
 app.get("/", (req, res) => {
   res.send(`
-    <html>
-    <head>
-      <style>
-        body {
-          font-family: Arial;
-          text-align: center;
-          background: linear-gradient(135deg, #0f2027, #2c5364);
-          color: white;
-        }
-        .card {
-          background: white;
-          color: black;
-          padding: 20px;
-          border-radius: 15px;
-          max-width: 320px;
-          margin: auto;
-          margin-top: 50px;
-        }
-        input, button {
-          width: 90%;
-          padding: 10px;
-          margin: 10px;
-          border-radius: 8px;
-        }
-        button {
-          background: #2c5364;
-          color: white;
-          border: none;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="card">
-        <h2>🎟️ Generar Cupón</h2>
-        <form method="POST" action="/generar">
-          <input name="nombre" placeholder="Nombre" required/>
-          <input name="telefono" placeholder="Teléfono" required/>
-          <input name="compra" placeholder="Monto de compra" required/>
-          <button>Generar</button>
-        </form>
-      </div>
-    </body>
-    </html>
+  <html>
+  <head>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+  </head>
+  <body style="background:#000;color:white;text-align:center;font-family:Poppins">
+    <h2>🎟️ Generar Cupón</h2>
+    <form method="POST" action="/generar">
+      <input name="nombre" placeholder="Nombre" required><br><br>
+      <input name="telefono" placeholder="Teléfono" required><br><br>
+      <input name="dpi" placeholder="DPI" required><br><br>
+      <input name="compra" placeholder="Monto compra" required><br><br>
+      <button>Generar</button>
+    </form>
+    <br>
+    <a href="/admin" style="color:gold;">Panel Admin</a>
+  </body>
+  </html>
   `);
 });
 
@@ -81,59 +56,80 @@ app.get("/", (req, res) => {
 // GENERAR CUPONES
 // ======================
 app.post("/generar", async (req, res) => {
-  const { nombre, telefono, compra } = req.body;
-
   try {
-    const monto = parseFloat(compra);
+    const { nombre, telefono, dpi, compra } = req.body;
+    const monto = parseFloat(compra) || 0;
 
     let cantidad = Math.floor(monto / 75);
-    cantidad = Math.min(cantidad, 10);
+    if (cantidad > 10) cantidad = 10;
 
     if (cantidad <= 0) {
-      return res.send("<h2>❌ Compra insuficiente</h2>");
+      return res.send("<h2 style='color:red'>Compra insuficiente</h2>");
     }
 
-    let html = `<h2 style="color:white;">Cupones generados: ${cantidad}</h2>`;
+    let html = `<body style="background:#000;text-align:center;font-family:Poppins">`;
 
     for (let i = 0; i < cantidad; i++) {
 
       const [result] = await db.promise().query(
-        "INSERT INTO cupones(cliente_id, codigo, usado) VALUES (?, ?, 0)",
-        [1, "temp"]
+        "INSERT INTO cupones (cliente, telefono, dpi, monto, codigo, usado) VALUES (?, ?, ?, ?, ?, 0)",
+        [nombre, telefono, dpi, monto, "temp"]
       );
 
       const id = result.insertId;
-      const codigo = "2026" + String(id).padStart(3, "0");
+      const codigo = "2026" + String(id).padStart(4, "0");
 
       await db.promise().query(
         "UPDATE cupones SET codigo=? WHERE id=?",
         [codigo, id]
       );
 
-      const url = `${BASE_URL}/validar/${codigo}`;
-      const qr = await QRCode.toDataURL(url);
-
       html += `
-        <div style="background:white; margin:10px; padding:10px; border-radius:10px;">
-          <h3>${codigo}</h3>
-          <a href="${url}" target="_blank">Descargar PDF</a><br>
-          <img src="${qr}" width="120"/>
+      <div style="
+        width:420px;
+        margin:20px auto;
+        padding:20px;
+        border:3px solid gold;
+        border-radius:20px;
+        background:url('fondo.jpg') center/cover;
+        color:white;
+      ">
+        <div style="background:rgba(0,0,0,0.6);padding:15px;border-radius:15px">
+
+          <h2 style="color:gold">CUPÓN OFICIAL</h2>
+
+          <h1 style="color:#FFD700">${codigo}</h1>
+
+          <p>${nombre}</p>
+
+          <a href="/pdf/${codigo}" style="
+            background:gold;
+            color:black;
+            padding:10px 20px;
+            border-radius:10px;
+            text-decoration:none;
+            font-weight:bold;
+          ">
+            Descargar Cupón
+          </a>
+
         </div>
+      </div>
       `;
     }
 
     res.send(html);
 
-  } catch (error) {
-    console.error("❌ Error generando cupones:", error);
-    res.send("Error generando cupones");
+  } catch (e) {
+    console.error(e);
+    res.send("Error generando");
   }
 });
 
 // ======================
-// VALIDAR + PDF
+// PDF
 // ======================
-app.get("/validar/:codigo", async (req, res) => {
+app.get("/pdf/:codigo", async (req, res) => {
   try {
     const codigo = req.params.codigo;
 
@@ -142,18 +138,17 @@ app.get("/validar/:codigo", async (req, res) => {
       [codigo]
     );
 
-    if (rows.length === 0) {
-      return res.send("<h2>❌ Cupón no válido</h2>");
-    }
+    if (!rows.length) return res.send("No existe");
 
-    const cupon = rows[0];
+    const c = rows[0];
 
-    if (cupon.usado == 1) {
-      return res.send("<h2>⚠️ Este cupón ya fue usado</h2>");
-    }
+    await db.promise().query(
+      "UPDATE cupones SET usado=1 WHERE codigo=?",
+      [codigo]
+    );
 
     const doc = new PDFDocument({
-      size: [300, 150],
+      size: [500, 250],
       margin: 0
     });
 
@@ -162,62 +157,96 @@ app.get("/validar/:codigo", async (req, res) => {
 
     doc.pipe(res);
 
-    // fondo
-    try {
-      doc.image("fondo.jpg", 0, 0, { width: 300, height: 150 });
-    } catch {
-      doc.rect(0, 0, 300, 150).fill("#111");
-    }
+    // Fuentes
+    doc.registerFont('poppins', './fonts/Poppins-Regular.ttf');
+    doc.registerFont('poppins-bold', './fonts/Poppins-Bold.ttf');
 
-    doc.rect(0, 0, 300, 150)
-      .fillOpacity(0.4)
-      .fill("black");
+    // Fondo
+    doc.image("fondo.jpg", 0, 0, { width: 500 });
 
-    doc.fillOpacity(1);
+    let y = 70;
 
-    doc.rect(5, 5, 290, 140)
-      .lineWidth(2)
-      .stroke("#FFD700");
-
-    try {
-      doc.image("logo.png", 15, 15, { width: 40 });
-    } catch {}
-
-    doc.fillColor("#FFD700")
-      .fontSize(14)
-      .text("CUPÓN OFICIAL", 70, 20);
-
-    doc.fillColor("white")
-      .fontSize(9)
-      .text("EVENTO PROMOCIONAL", 70, 40);
-
-    doc.moveTo(10, 60).lineTo(290, 60).stroke("white");
-
-    doc.fillColor("#FFD700")
+    // título
+    doc.font('poppins-bold')
+      .fillColor("#ffffff")
       .fontSize(22)
-      .text(codigo, 20, 75);
+      .text("CUPÓN OFICIAL", 0, y, { align: "center" });
 
-    doc.fillColor("white")
-      .fontSize(8)
-      .text("Escanea para reclamar tu premio", 20, 110);
+    y += 30;
 
-    for (let i = 0; i < 300; i += 10) {
-      doc.circle(i, 148, 2).fill("#FFD700");
-    }
+    // código
+    doc.font('poppins-bold')
+      .fontSize(28)
+      .text(codigo, 0, y, { align: "center" });
 
+    y += 30;
+
+    // cliente
+    doc.font('poppins-bold')
+      .fillColor("white")
+      .fontSize(14)
+      .text(c.cliente, 0, y, { align: "center" });
+
+    // 🔥 Cerrar PDF
     doc.end();
 
   } catch (error) {
-    console.error("❌ Error validando cupón:", error);
-    res.send("Error interno");
+    console.error(error);
+    res.send("Error PDF");
   }
 });
 
 // ======================
-// 🚀 PUERTO CORRECTO PARA RAILWAY
+// ADMIN
 // ======================
-const PORT = process.env.PORT || 8080;
+app.get("/admin", async (req, res) => {
+  const [rows] = await db.promise().query("SELECT * FROM cupones ORDER BY id DESC");
 
-app.listen(PORT, () => {
-  console.log("🚀 Servidor corriendo en puerto", PORT);
+  let lista = rows.map(c => `
+    <tr>
+      <td>${c.codigo}</td>
+      <td>${c.cliente}</td>
+      <td>${c.telefono}</td>
+      <td>${c.dpi}</td>
+      <td>Q${c.monto}</td>
+      <td style="color:${c.usado ? 'red' : 'lime'}">
+        ${c.usado ? 'USADO' : 'ACTIVO'}
+      </td>
+      <td><a href="/delete/${c.id}" style="color:red">Eliminar</a></td>
+    </tr>
+  `).join("");
+
+  res.send(`
+  <body style="background:#000;color:white;font-family:Poppins;text-align:center">
+    <h1>📊 Panel Admin PRO</h1>
+
+    <table style="width:95%;margin:auto;border-collapse:collapse">
+      <tr style="background:gold;color:black">
+        <th>Código</th>
+        <th>Cliente</th>
+        <th>Teléfono</th>
+        <th>DPI</th>
+        <th>Monto</th>
+        <th>Estado</th>
+        <th>Acción</th>
+      </tr>
+      ${lista}
+    </table>
+
+    <br><a href="/" style="color:gold">Volver</a>
+  </body>
+  `);
+});
+
+// ======================
+// ELIMINAR
+// ======================
+app.get("/delete/:id", async (req, res) => {
+  await db.promise().query("DELETE FROM cupones WHERE id=?", [req.params.id]);
+  res.redirect("/admin");
+});
+
+// ======================
+app.listen(8080, () => {
+  console.log("🚀 Servidor en 8080");
 });

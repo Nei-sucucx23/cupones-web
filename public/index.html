@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Cupones</title>
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+      color: white;
+      text-align: center;
+    }
+
+    .card {
+      background: #111;
+      padding: 25px;
+      border-radius: 15px;
+      width: 300px;
+      margin: auto;
+      margin-top: 60px;
+      box-shadow: 0 0 20px rgba(0,255,200,0.3);
+    }
+
+    h2 {
+      color: #00FFD1;
+    }
+
+    input, button {
+      width: 90%;
+      padding: 10px;
+      margin: 10px;
+      border-radius: 8px;
+      border: none;
+    }
+
+    button {
+      background: #00FFD1;
+      color: black;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <h2>🎟 Generar Cupón</h2>
+  <form method="POST" action="/generar">
+    <input name="nombre" placeholder="Nombre" required>
+    <input name="telefono" placeholder="Teléfono" required>
+    <input name="compra" placeholder="Monto" required>
+    <button>Generar</button>
+  </form>
+</div>
+
+</body>
+</html>

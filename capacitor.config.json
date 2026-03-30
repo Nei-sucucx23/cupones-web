@@ -1,0 +1,9 @@
+{
+  "appId": "com.cupones.app",
+  "appName": "Cupones App",
+  "webDir": "www",
+  "server": {
+    "url": "https://cupones-web-production.up.railway.app",
+    "cleartext": true
+  }
+}
