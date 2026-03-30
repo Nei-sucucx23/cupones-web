@@ -12,11 +12,12 @@ app.use(express.static(__dirname));
 // ======================
 // MYSQL
 // ======================
-const db = mysql.createConnection({
-  host: "127.0.0.1",
-  user: "root",
-  password: "fr@ctales",
-  database: "cupones_db"
+ const db = mysql.createConnection({
+  host: process.env.MYSQLHOST,
+  user: process.env.MYSQLUSER,
+  password: process.env.MYSQLPASSWORD,
+  database: process.env.MYSQLDATABASE,
+  port: process.env.MYSQLPORT
 });
 
 db.connect(err => {
@@ -247,6 +248,8 @@ app.get("/delete/:id", async (req, res) => {
 });
 
 // ======================
-app.listen(8080, () => {
-  console.log("🚀 Servidor en 8080");
+const PORT = process.env.PORT || 8080;
+
+app.listen(PORT, () => {
+  console.log("🚀 Servidor en " + PORT);
 });
