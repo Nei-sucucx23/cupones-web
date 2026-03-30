@@ -4,6 +4,6 @@
   "webDir": "www",
   "server": {
     "url": "https://cupones-web-production.up.railway.app",
-    "cleartext": false
+    "cleartext": true
   }
 }

@@ -11,9 +11,23 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(__dirname));
 
 // ======================
-// MYSQL (RAILWAY)
+// MYSQL (LOCAL + RAILWAY)
 // ======================
-const db = mysql.createConnection(process.env.MYSQL_URL);
+let db;
+
+if (process.env.MYSQL_URL) {
+  db = mysql.createConnection(process.env.MYSQL_URL);
+  console.log("🌍 Railway DB");
+} else {
+  db = mysql.createConnection({
+    host: "localhost",
+    user: "root",
+    password: "",
+    database: "cupones",
+    port: 3306
+  });
+  console.log("💻 Local DB");
+}
 
 db.connect(err => {
   if (err) {
@@ -24,7 +38,7 @@ db.connect(err => {
 });
 
 // ======================
-// TEST ROOT (IMPORTANTE)
+// ROOT (OBLIGATORIO)
 // ======================
 app.get("/", (req, res) => {
   res.send(`
@@ -98,7 +112,7 @@ app.post("/generar", async (req, res) => {
 });
 
 // ======================
-// PDF (SEGURO)
+// PDF SEGURO
 // ======================
 app.get("/pdf/:codigo", async (req, res) => {
   try {
@@ -128,9 +142,7 @@ app.get("/pdf/:codigo", async (req, res) => {
 
     doc.pipe(res);
 
-    // ======================
-    // 🔥 PROTECCIÓN DE ARCHIVOS
-    // ======================
+    // Fuente segura
     if (fs.existsSync("./fonts/Poppins-Bold.ttf")) {
       doc.registerFont('poppins-bold', './fonts/Poppins-Bold.ttf');
       doc.font('poppins-bold');
@@ -138,7 +150,7 @@ app.get("/pdf/:codigo", async (req, res) => {
       doc.font('Helvetica');
     }
 
-    // Fondo SOLO si existe
+    // Fondo opcional
     if (fs.existsSync("./fondo.jpg")) {
       doc.image("fondo.jpg", 0, 0, { width: 500 });
     }
