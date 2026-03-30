@@ -4,13 +4,14 @@ process.on('unhandledRejection', console.error);
 const express = require("express");
 const mysql = require("mysql2");
 const PDFDocument = require("pdfkit");
+const fs = require("fs");
 
 const app = express();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(__dirname));
 
 // ======================
-// MYSQL (RAILWAY FIX)
+// MYSQL (RAILWAY)
 // ======================
 const db = mysql.createConnection(process.env.MYSQL_URL);
 
@@ -23,12 +24,12 @@ db.connect(err => {
 });
 
 // ======================
-// FORMULARIO
+// TEST ROOT (IMPORTANTE)
 // ======================
 app.get("/", (req, res) => {
   res.send(`
   <html>
-  <body style="background:#000;color:white;text-align:center;font-family:Poppins">
+  <body style="background:#000;color:white;text-align:center;font-family:sans-serif">
     <h2>🎟️ Generar Cupón</h2>
     <form method="POST" action="/generar">
       <input name="nombre" placeholder="Nombre" required><br><br>
@@ -59,7 +60,7 @@ app.post("/generar", async (req, res) => {
       return res.send("<h2 style='color:red'>Compra insuficiente</h2>");
     }
 
-    let html = `<body style="background:#000;text-align:center;font-family:Poppins">`;
+    let html = `<body style="background:#000;text-align:center;font-family:sans-serif">`;
 
     for (let i = 0; i < cantidad; i++) {
 
@@ -77,15 +78,13 @@ app.post("/generar", async (req, res) => {
       );
 
       html += `
-      <div style="width:420px;margin:20px auto;padding:20px;border:3px solid gold;border-radius:20px;background:url('fondo.jpg') center/cover;color:white;">
-        <div style="background:rgba(0,0,0,0.6);padding:15px;border-radius:15px">
-          <h2 style="color:gold">CUPÓN OFICIAL</h2>
-          <h1 style="color:#FFD700">${codigo}</h1>
-          <p>${nombre}</p>
-          <a href="/pdf/${codigo}" style="background:gold;color:black;padding:10px 20px;border-radius:10px;text-decoration:none;font-weight:bold;">
-            Descargar Cupón
-          </a>
-        </div>
+      <div style="width:420px;margin:20px auto;padding:20px;border:3px solid gold;border-radius:20px;color:white;">
+        <h2 style="color:gold">CUPÓN OFICIAL</h2>
+        <h1 style="color:#FFD700">${codigo}</h1>
+        <p>${nombre}</p>
+        <a href="/pdf/${codigo}" style="background:gold;color:black;padding:10px 20px;border-radius:10px;text-decoration:none;font-weight:bold;">
+          Descargar Cupón
+        </a>
       </div>
       `;
     }
@@ -99,7 +98,7 @@ app.post("/generar", async (req, res) => {
 });
 
 // ======================
-// PDF
+// PDF (SEGURO)
 // ======================
 app.get("/pdf/:codigo", async (req, res) => {
   try {
@@ -129,31 +128,35 @@ app.get("/pdf/:codigo", async (req, res) => {
 
     doc.pipe(res);
 
-    // ⚠️ IMPORTANTE: verifica que estos archivos EXISTAN en Railway
-    doc.registerFont('poppins', './fonts/Poppins-Regular.ttf');
-    doc.registerFont('poppins-bold', './fonts/Poppins-Bold.ttf');
+    // ======================
+    // 🔥 PROTECCIÓN DE ARCHIVOS
+    // ======================
+    if (fs.existsSync("./fonts/Poppins-Bold.ttf")) {
+      doc.registerFont('poppins-bold', './fonts/Poppins-Bold.ttf');
+      doc.font('poppins-bold');
+    } else {
+      doc.font('Helvetica');
+    }
 
-    // Fondo (verifica que exista fondo.jpg)
-    doc.image("fondo.jpg", 0, 0, { width: 500 });
+    // Fondo SOLO si existe
+    if (fs.existsSync("./fondo.jpg")) {
+      doc.image("fondo.jpg", 0, 0, { width: 500 });
+    }
 
     let y = 70;
 
-    doc.font('poppins-bold')
-      .fillColor("#ffffff")
+    doc.fillColor("#ffffff")
       .fontSize(22)
       .text("CUPÓN OFICIAL", 0, y, { align: "center" });
 
     y += 30;
 
-    doc.font('poppins-bold')
-      .fontSize(28)
+    doc.fontSize(28)
       .text(codigo, 0, y, { align: "center" });
 
     y += 30;
 
-    doc.font('poppins-bold')
-      .fillColor("white")
-      .fontSize(14)
+    doc.fontSize(14)
       .text(c.cliente, 0, y, { align: "center" });
 
     doc.end();
@@ -185,8 +188,8 @@ app.get("/admin", async (req, res) => {
   `).join("");
 
   res.send(`
-  <body style="background:#000;color:white;font-family:Poppins;text-align:center">
-    <h1>📊 Panel Admin PRO</h1>
+  <body style="background:#000;color:white;font-family:sans-serif;text-align:center">
+    <h1>📊 Panel Admin</h1>
     <table style="width:95%;margin:auto;border-collapse:collapse">
       <tr style="background:gold;color:black">
         <th>Código</th>
