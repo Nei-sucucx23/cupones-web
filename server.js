@@ -17,19 +17,17 @@ app.use(express.static(__dirname));
 let db;
 
 if (process.env.MYSQL_URL) {
-  // 🔥 PRODUCCIÓN (Railway)
-  console.log("🌍 Usando DB de Railway");
+  console.log("🌍 Railway DB");
 
   db = mysql.createConnection(process.env.MYSQL_URL);
 
 } else {
-  // 💻 LOCAL (tu PC)
-  console.log("💻 Usando DB local");
+  console.log("💻 Local DB");
 
   db = mysql.createConnection({
     host: "localhost",
     user: "root",
-    password: "fr@ctales", // ⚠️ CAMBIA ESTO
+    password: "fr@ctales", // CAMBIA si es diferente
     database: "cupones_db"
   });
 }
@@ -37,16 +35,24 @@ if (process.env.MYSQL_URL) {
 db.connect(err => {
   if (err) {
     console.error("❌ MySQL error:", err);
-    process.exit(1);
+    return;
   }
   console.log("✅ MySQL conectado");
 });
 
 
 // ======================
-// HOME
+// ROOT (MUY IMPORTANTE)
 // ======================
 app.get("/", (req, res) => {
+  res.send("✅ API funcionando correctamente");
+});
+
+
+// ======================
+// FORMULARIO
+// ======================
+app.get("/app", (req, res) => {
   res.send(`
   <html>
   <body style="background:#000;color:white;text-align:center;font-family:sans-serif">
@@ -80,10 +86,10 @@ app.post("/generar", async (req, res) => {
     if (cantidad > 10) cantidad = 10;
 
     if (cantidad <= 0) {
-      return res.send("<h2 style='color:red'>Compra insuficiente</h2>");
+      return res.send("Compra insuficiente");
     }
 
-    let html = `<body style="background:#000;text-align:center;font-family:sans-serif">`;
+    let html = `<body style="background:#000;text-align:center;color:white">`;
 
     for (let i = 0; i < cantidad; i++) {
 
@@ -101,21 +107,10 @@ app.post("/generar", async (req, res) => {
       );
 
       html += `
-      <div style="width:420px;margin:20px auto;padding:20px;border:3px solid gold;border-radius:20px;color:white;">
-        <h2 style="color:gold">CUPÓN OFICIAL</h2>
-        <h1 style="color:#FFD700">${codigo}</h1>
+      <div style="margin:20px;padding:20px;border:2px solid gold">
+        <h2>${codigo}</h2>
         <p>${nombre}</p>
-
-        <a href="/pdf/${codigo}" style="
-          background:gold;
-          color:black;
-          padding:10px 20px;
-          border-radius:10px;
-          text-decoration:none;
-          font-weight:bold;
-        ">
-          Descargar Cupón
-        </a>
+        <a href="/pdf/${codigo}">Descargar PDF</a>
       </div>
       `;
     }
@@ -130,7 +125,7 @@ app.post("/generar", async (req, res) => {
 
 
 // ======================
-// PDF SEGURO
+// PDF (SIN ERRORES)
 // ======================
 app.get("/pdf/:codigo", async (req, res) => {
   try {
@@ -145,49 +140,23 @@ app.get("/pdf/:codigo", async (req, res) => {
 
     const c = rows[0];
 
-    await db.promise().query(
-      "UPDATE cupones SET usado=1 WHERE codigo=?",
-      [codigo]
-    );
-
     const doc = new PDFDocument({
       size: [500, 250],
       margin: 0
     });
 
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename=${codigo}.pdf`);
-
     doc.pipe(res);
 
-    // Fuente segura
-    if (fs.existsSync("./fonts/Poppins-Bold.ttf")) {
-      doc.registerFont('poppins-bold', './fonts/Poppins-Bold.ttf');
-      doc.font('poppins-bold');
-    } else {
-      doc.font('Helvetica');
-    }
+    doc.font("Helvetica")
+      .fontSize(25)
+      .text("CUPÓN", 0, 80, { align: "center" });
 
-    // Fondo seguro
-    if (fs.existsSync("./fondo.jpg")) {
-      doc.image("fondo.jpg", 0, 0, { width: 500 });
-    }
-
-    let y = 70;
-
-    doc.fillColor("#ffffff")
-      .fontSize(22)
-      .text("CUPÓN OFICIAL", 0, y, { align: "center" });
-
-    y += 30;
-
-    doc.fontSize(28)
-      .text(codigo, 0, y, { align: "center" });
-
-    y += 30;
+    doc.fontSize(20)
+      .text(codigo, 0, 120, { align: "center" });
 
     doc.fontSize(14)
-      .text(c.cliente, 0, y, { align: "center" });
+      .text(c.cliente, 0, 160, { align: "center" });
 
     doc.end();
 
@@ -202,49 +171,31 @@ app.get("/pdf/:codigo", async (req, res) => {
 // ADMIN
 // ======================
 app.get("/admin", async (req, res) => {
-  const [rows] = await db.promise().query("SELECT * FROM cupones ORDER BY id DESC");
+  try {
+    const [rows] = await db.promise().query("SELECT * FROM cupones ORDER BY id DESC");
 
-  let lista = rows.map(c => `
-    <tr>
-      <td>${c.codigo}</td>
-      <td>${c.cliente}</td>
-      <td>${c.telefono}</td>
-      <td>${c.dpi}</td>
-      <td>Q${c.monto}</td>
-      <td style="color:${c.usado ? 'red' : 'lime'}">
-        ${c.usado ? 'USADO' : 'ACTIVO'}
-      </td>
-      <td><a href="/delete/${c.id}" style="color:red">Eliminar</a></td>
-    </tr>
-  `).join("");
-
-  res.send(`
-  <body style="background:#000;color:white;font-family:sans-serif;text-align:center">
-    <h1>📊 Panel Admin</h1>
-
-    <table style="width:95%;margin:auto;border-collapse:collapse">
-      <tr style="background:gold;color:black">
-        <th>Código</th>
-        <th>Cliente</th>
-        <th>Teléfono</th>
-        <th>DPI</th>
-        <th>Monto</th>
-        <th>Estado</th>
-        <th>Acción</th>
+    let lista = rows.map(c => `
+      <tr>
+        <td>${c.codigo}</td>
+        <td>${c.cliente}</td>
+        <td>${c.telefono}</td>
+        <td>${c.dpi}</td>
+        <td>${c.monto}</td>
       </tr>
-      ${lista}
-    </table>
+    `).join("");
 
-    <br><a href="/" style="color:gold">Volver</a>
-  </body>
-  `);
-});
+    res.send(`
+    <body style="background:#000;color:white;text-align:center">
+      <h1>Admin</h1>
+      <table border="1" style="margin:auto">
+        ${lista}
+      </table>
+    </body>
+    `);
 
-
-// ======================
-app.get("/delete/:id", async (req, res) => {
-  await db.promise().query("DELETE FROM cupones WHERE id=?", [req.params.id]);
-  res.redirect("/admin");
+  } catch (e) {
+    res.send("Error admin");
+  }
 });
 
 
@@ -252,5 +203,5 @@ app.get("/delete/:id", async (req, res) => {
 const PORT = process.env.PORT || 8080;
 
 app.listen(PORT, () => {
-  console.log("🚀 Servidor en " + PORT);
+  console.log("🚀 Servidor en puerto " + PORT);
 });
