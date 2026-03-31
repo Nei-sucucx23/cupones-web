@@ -1,16 +1,23 @@
+process.on('uncaughtException', console.error);
+process.on('unhandledRejection', console.error);
+
 const express = require("express");
 const mysql = require("mysql2");
 const PDFDocument = require("pdfkit");
+const fs = require("fs");
 
 const app = express();
 app.use(express.urlencoded({ extended: true }));
+app.use(express.static(__dirname));
 
 // ======================
-// MYSQL
+// MYSQL UNIVERSAL
 // ======================
 let db;
 
 if (process.env.MYSQL_URL) {
+  console.log("🌍 Usando DB de Railway");
+
   const url = new URL(process.env.MYSQL_URL);
 
   db = mysql.createConnection({
@@ -23,37 +30,42 @@ if (process.env.MYSQL_URL) {
   });
 
 } else {
+  console.log("💻 Usando DB local");
+
   db = mysql.createConnection({
     host: "localhost",
     user: "root",
-    password: "",
+    password: "fr@ctales",
     database: "cupones_db"
   });
 }
 
 db.connect(err => {
-  if (err) console.error(err);
+  if (err) console.error("❌ MySQL:", err);
   else console.log("✅ MySQL conectado");
 });
 
 // ======================
-// FORMULARIO
+// HOME
 // ======================
 app.get("/", (req, res) => {
   res.send(`
-    <body style="background:black;color:white;text-align:center;font-family:sans-serif">
-      <h2>🎟️ Generar Cupones</h2>
+  <html>
+  <body style="background:#000;color:white;text-align:center;font-family:sans-serif">
+    <h2>🎟️ Generar Cupón</h2>
 
-      <form method="POST" action="/generar">
-        <input name="nombre" placeholder="Nombre" required><br><br>
-        <input name="telefono" placeholder="Teléfono" required><br><br>
-        <input name="dpi" placeholder="DPI" required><br><br>
-        <input name="compra" placeholder="Monto compra" required><br><br>
-        <button>Generar</button>
-      </form>
+    <form method="POST" action="/generar">
+      <input name="nombre" placeholder="Nombre" required><br><br>
+      <input name="telefono" placeholder="Teléfono" required><br><br>
+      <input name="dpi" placeholder="DPI" required><br><br>
+      <input name="compra" placeholder="Monto compra" required><br><br>
+      <button>Generar</button>
+    </form>
 
-      <br><a href="/admin" style="color:gold;">Panel Admin</a>
-    </body>
+    <br>
+    <a href="/admin" style="color:gold;">Panel Admin</a>
+  </body>
+  </html>
   `);
 });
 
@@ -72,17 +84,17 @@ app.post("/generar", async (req, res) => {
       return res.send("<h2 style='color:red'>Compra insuficiente</h2>");
     }
 
-    let html = `<body style="background:black;text-align:center;color:white">`;
+    let html = `<body style="background:#000;text-align:center;color:white">`;
 
     for (let i = 0; i < cantidad; i++) {
 
       const [result] = await db.promise().query(
-        "INSERT INTO cupones (cliente, telefono, dpi, monto, codigo, usado) VALUES (?, ?, ?, ?, 'temp', 0)",
-        [nombre, telefono, dpi, monto]
+        "INSERT INTO cupones (cliente, telefono, dpi, monto, codigo, usado) VALUES (?, ?, ?, ?, ?, 0)",
+        [nombre, telefono, dpi, monto, "temp"]
       );
 
       const id = result.insertId;
-      const codigo = "CUP-" + String(id).padStart(5, "0");
+      const codigo = "2026" + String(id).padStart(4, "0");
 
       await db.promise().query(
         "UPDATE cupones SET codigo=? WHERE id=?",
@@ -90,22 +102,22 @@ app.post("/generar", async (req, res) => {
       );
 
       html += `
-        <div style="border:2px solid gold;margin:20px;padding:20px;border-radius:15px">
-          <h2 style="color:gold">CUPÓN</h2>
-          <h1>${codigo}</h1>
-          <p>${nombre}</p>
+      <div style="width:420px;margin:20px auto;padding:20px;border:3px solid gold;border-radius:20px;color:white;">
+        <h2 style="color:gold">CUPÓN OFICIAL</h2>
+        <h1 style="color:#FFD700">${codigo}</h1>
+        <p>${nombre}</p>
 
-          <a href="/pdf/${codigo}" style="
-            background:gold;
-            color:black;
-            padding:10px;
-            border-radius:10px;
-            text-decoration:none;
-            font-weight:bold;
-          ">
-            Descargar PDF
-          </a>
-        </div>
+        <a href="/pdf/${codigo}" style="
+          background:gold;
+          color:black;
+          padding:10px 20px;
+          border-radius:10px;
+          text-decoration:none;
+          font-weight:bold;
+        ">
+          Descargar Cupón
+        </a>
+      </div>
       `;
     }
 
@@ -113,12 +125,12 @@ app.post("/generar", async (req, res) => {
 
   } catch (e) {
     console.error(e);
-    res.send("❌ Error generando");
+    res.send("Error generando");
   }
 });
 
 // ======================
-// PDF + MARCAR USADO
+// PDF (MISMO DISEÑO)
 // ======================
 app.get("/pdf/:codigo", async (req, res) => {
   try {
@@ -129,23 +141,19 @@ app.get("/pdf/:codigo", async (req, res) => {
       [codigo]
     );
 
-    if (!rows.length) return res.send("❌ Cupón no existe");
+    if (!rows.length) return res.send("No existe");
 
     const c = rows[0];
 
-    if (c.usado) {
-      return res.send("<h2 style='color:red'>❌ Cupón ya utilizado</h2>");
-    }
-
-    // MARCAR COMO USADO
+    // marcar como usado
     await db.promise().query(
       "UPDATE cupones SET usado=1 WHERE codigo=?",
       [codigo]
     );
 
     const doc = new PDFDocument({
-      size: [400, 200],
-      margin: 20
+      size: [500, 250],
+      margin: 0
     });
 
     res.setHeader("Content-Type", "application/pdf");
@@ -153,25 +161,45 @@ app.get("/pdf/:codigo", async (req, res) => {
 
     doc.pipe(res);
 
-    doc.fontSize(20).text("🎟️ CUPÓN OFICIAL", { align: "center" });
-    doc.moveDown();
+    // fuente
+    if (fs.existsSync("./fonts/Poppins-Bold.ttf")) {
+      doc.registerFont('poppins-bold', './fonts/Poppins-Bold.ttf');
+      doc.font('poppins-bold');
+    } else {
+      doc.font('Helvetica');
+    }
 
-    doc.fontSize(18).text(codigo, { align: "center" });
-    doc.moveDown();
+    // fondo
+    if (fs.existsSync("./fondo.jpg")) {
+      doc.image("fondo.jpg", 0, 0, { width: 500 });
+    }
 
-    doc.fontSize(14).text("Cliente: " + c.cliente, { align: "center" });
-    doc.text("Monto: Q" + c.monto, { align: "center" });
+    let y = 70;
+
+    doc.fillColor("#ffffff")
+      .fontSize(22)
+      .text("CUPÓN OFICIAL", 0, y, { align: "center" });
+
+    y += 30;
+
+    doc.fontSize(28)
+      .text(codigo, 0, y, { align: "center" });
+
+    y += 30;
+
+    doc.fontSize(14)
+      .text(c.cliente, 0, y, { align: "center" });
 
     doc.end();
 
   } catch (error) {
     console.error(error);
-    res.send("❌ Error PDF");
+    res.send("Error PDF");
   }
 });
 
 // ======================
-// ADMIN
+// ADMIN (MEJORADO)
 // ======================
 app.get("/admin", async (req, res) => {
   const [rows] = await db.promise().query("SELECT * FROM cupones ORDER BY id DESC");
@@ -180,30 +208,51 @@ app.get("/admin", async (req, res) => {
     <tr>
       <td>${c.codigo}</td>
       <td>${c.cliente}</td>
+      <td>${c.telefono}</td>
+      <td>${c.dpi}</td>
       <td>Q${c.monto}</td>
       <td style="color:${c.usado ? 'red' : 'lime'}">
         ${c.usado ? 'USADO' : 'ACTIVO'}
+      </td>
+      <td>
+        <a href="/delete/${c.id}" style="color:red;font-weight:bold">
+          Eliminar
+        </a>
       </td>
     </tr>
   `).join("");
 
   res.send(`
-    <body style="background:black;color:white;text-align:center">
-      <h1>📊 Panel Admin</h1>
+  <body style="background:#000;color:white;font-family:sans-serif;text-align:center">
+    <h1 style="color:gold">📊 Panel Admin</h1>
 
-      <table border="1" style="margin:auto">
-        <tr>
-          <th>Código</th>
-          <th>Cliente</th>
-          <th>Monto</th>
-          <th>Estado</th>
-        </tr>
-        ${lista}
-      </table>
+    <table style="width:95%;margin:auto;border-collapse:collapse">
+      <tr style="background:gold;color:black">
+        <th>Código</th>
+        <th>Cliente</th>
+        <th>Teléfono</th>
+        <th>DPI</th>
+        <th>Monto</th>
+        <th>Estado</th>
+        <th>Acción</th>
+      </tr>
+      ${lista}
+    </table>
 
-      <br><a href="/" style="color:gold">Volver</a>
-    </body>
+    <br><a href="/" style="color:gold">Volver</a>
+  </body>
   `);
+});
+
+// ======================
+// ELIMINAR
+// ======================
+app.get("/delete/:id", async (req, res) => {
+  await db.promise().query(
+    "DELETE FROM cupones WHERE id=?",
+    [req.params.id]
+  );
+  res.redirect("/admin");
 });
 
 // ======================
