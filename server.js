@@ -37,13 +37,24 @@ if (process.env.MYSQL_URL) {
   db = mysql.createConnection({
     host: "localhost",
     user: "root",
-    password: "fr@ctales", // 👈 CAMBIA SI ES DIFERENTE
+    password: "fr@ctales",
     database: "cupones_db"
   });
-
+} // ✅ ESTA LLAVE FALTABA
 
 // ======================
-// RUTA TEST (IMPORTANTE)
+// CONEXIÓN MYSQL
+// ======================
+db.connect(err => {
+  if (err) {
+    console.error("❌ MySQL error:", err);
+    process.exit(1);
+  }
+  console.log("✅ MySQL conectado");
+});
+
+// ======================
+// HOME
 // ======================
 app.get("/", (req, res) => {
   res.send(`
@@ -127,7 +138,7 @@ app.post("/generar", async (req, res) => {
 });
 
 // ======================
-// PDF SEGURO
+// PDF
 // ======================
 app.get("/pdf/:codigo", async (req, res) => {
   try {
@@ -157,16 +168,7 @@ app.get("/pdf/:codigo", async (req, res) => {
 
     doc.pipe(res);
 
-    if (fs.existsSync("./fonts/Poppins-Bold.ttf")) {
-      doc.registerFont('poppins-bold', './fonts/Poppins-Bold.ttf');
-      doc.font('poppins-bold');
-    } else {
-      doc.font('Helvetica');
-    }
-
-    if (fs.existsSync("./fondo.jpg")) {
-      doc.image("fondo.jpg", 0, 0, { width: 500 });
-    }
+    doc.font('Helvetica');
 
     let y = 70;
 
