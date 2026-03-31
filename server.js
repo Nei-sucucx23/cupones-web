@@ -1,20 +1,24 @@
 const express = require("express");
 const app = express();
 
-// IMPORTANTE: middleware básico
-app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 app.get("/", (req, res) => {
-  res.send("🔥 FUNCIONA PERFECTO 🔥");
+  res.send(`
+    <h2>🎟️ Sistema de Cupones</h2>
+    <form method="POST" action="/test">
+      <input name="nombre" placeholder="Nombre">
+      <button>Enviar</button>
+    </form>
+  `);
 });
 
-app.get("/health", (req, res) => {
-  res.send("OK");
+app.post("/test", (req, res) => {
+  res.send("Hola " + req.body.nombre);
 });
 
 const PORT = process.env.PORT || 8080;
 
-// 👇 CAMBIO CLAVE AQUÍ
 app.listen(PORT, () => {
-  console.log("🚀 Servidor escuchando en puerto " + PORT);
+  console.log("Servidor OK en " + PORT);
 });
