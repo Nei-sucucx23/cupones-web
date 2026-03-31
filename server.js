@@ -40,17 +40,11 @@ if (process.env.MYSQL_URL) {
   });
 }
 
-db.connect(err => {
-  if (err) console.error("❌ MySQL:", err);
-  else console.log("✅ MySQL conectado");
-});
-
 // ======================
 // HOME
 // ======================
 app.get("/", (req, res) => {
   res.send(`
-  <html>
   <body style="background:#000;color:white;text-align:center;font-family:sans-serif">
     <h2>🎟️ Generar Cupón</h2>
 
@@ -65,7 +59,6 @@ app.get("/", (req, res) => {
     <br>
     <a href="/admin" style="color:gold;">Panel Admin</a>
   </body>
-  </html>
   `);
 });
 
@@ -84,7 +77,7 @@ app.post("/generar", async (req, res) => {
       return res.send("<h2 style='color:red'>Compra insuficiente</h2>");
     }
 
-    let html = `<body style="background:#000;text-align:center;color:white">`;
+    let html = `<body style="background:#000;text-align:center;font-family:sans-serif">`;
 
     for (let i = 0; i < cantidad; i++) {
 
@@ -124,13 +117,13 @@ app.post("/generar", async (req, res) => {
     res.send(html);
 
   } catch (e) {
-    console.error(e);
+    console.error("❌ ERROR GENERAR:", e);
     res.send("Error generando");
   }
 });
 
 // ======================
-// PDF (MISMO DISEÑO)
+// PDF
 // ======================
 app.get("/pdf/:codigo", async (req, res) => {
   try {
@@ -145,7 +138,6 @@ app.get("/pdf/:codigo", async (req, res) => {
 
     const c = rows[0];
 
-    // marcar como usado
     await db.promise().query(
       "UPDATE cupones SET usado=1 WHERE codigo=?",
       [codigo]
@@ -161,45 +153,51 @@ app.get("/pdf/:codigo", async (req, res) => {
 
     doc.pipe(res);
 
-    // fuente
-    if (fs.existsSync("./fonts/Poppins-Bold.ttf")) {
-      doc.registerFont('poppins-bold', './fonts/Poppins-Bold.ttf');
-      doc.font('poppins-bold');
-    } else {
-      doc.font('Helvetica');
-    }
-
-    // fondo
     if (fs.existsSync("./fondo.jpg")) {
       doc.image("fondo.jpg", 0, 0, { width: 500 });
     }
 
-    let y = 70;
-
     doc.fillColor("#ffffff")
       .fontSize(22)
-      .text("CUPÓN OFICIAL", 0, y, { align: "center" });
-
-    y += 30;
+      .text("CUPÓN OFICIAL", 0, 70, { align: "center" });
 
     doc.fontSize(28)
-      .text(codigo, 0, y, { align: "center" });
-
-    y += 30;
+      .text(codigo, 0, 110, { align: "center" });
 
     doc.fontSize(14)
-      .text(c.cliente, 0, y, { align: "center" });
+      .text(c.cliente, 0, 150, { align: "center" });
 
     doc.end();
 
   } catch (error) {
-    console.error(error);
+    console.error("❌ ERROR PDF:", error);
     res.send("Error PDF");
   }
 });
 
 // ======================
-// ADMIN (MEJORADO)
+// BACKUP
+// ======================
+app.get("/backup", async (req, res) => {
+  try {
+    const [rows] = await db.promise().query("SELECT * FROM cupones");
+
+    res.setHeader("Content-Type", "application/json");
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=backup_cupones.json"
+    );
+
+    res.send(JSON.stringify(rows, null, 2));
+
+  } catch (error) {
+    console.error("❌ ERROR BACKUP:", error);
+    res.send("Error backup");
+  }
+});
+
+// ======================
+// ADMIN
 // ======================
 app.get("/admin", async (req, res) => {
   const [rows] = await db.promise().query("SELECT * FROM cupones ORDER BY id DESC");
@@ -214,17 +212,26 @@ app.get("/admin", async (req, res) => {
       <td style="color:${c.usado ? 'red' : 'lime'}">
         ${c.usado ? 'USADO' : 'ACTIVO'}
       </td>
-      <td>
-        <a href="/delete/${c.id}" style="color:red;font-weight:bold">
-          Eliminar
-        </a>
-      </td>
+      <td><a href="/delete/${c.id}" style="color:red">Eliminar</a></td>
     </tr>
   `).join("");
 
   res.send(`
   <body style="background:#000;color:white;font-family:sans-serif;text-align:center">
-    <h1 style="color:gold">📊 Panel Admin</h1>
+    <h1>📊 Panel Admin</h1>
+
+    <a href="/backup" style="
+      background:gold;
+      color:black;
+      padding:10px 20px;
+      border-radius:10px;
+      text-decoration:none;
+      font-weight:bold;
+    ">
+      📥 Descargar Backup
+    </a>
+
+    <br><br>
 
     <table style="width:95%;margin:auto;border-collapse:collapse">
       <tr style="background:gold;color:black">
@@ -245,19 +252,16 @@ app.get("/admin", async (req, res) => {
 });
 
 // ======================
-// ELIMINAR
+// DELETE
 // ======================
 app.get("/delete/:id", async (req, res) => {
-  await db.promise().query(
-    "DELETE FROM cupones WHERE id=?",
-    [req.params.id]
-  );
+  await db.promise().query("DELETE FROM cupones WHERE id=?", [req.params.id]);
   res.redirect("/admin");
 });
 
 // ======================
 const PORT = process.env.PORT || 8080;
 
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log("🚀 Servidor en " + PORT);
 });
