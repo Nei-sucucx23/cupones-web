@@ -1,3 +1,10 @@
+app.get("/", (req, res) => {
+  res.status(200).send("Servidor activo ✅");
+});
+
+app.get("/health", (req, res) => {
+  res.status(200).send("OK");
+});
 process.on('uncaughtException', console.error);
 process.on('unhandledRejection', console.error);
 
