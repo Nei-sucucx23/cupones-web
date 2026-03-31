@@ -4,6 +4,7 @@ process.on('unhandledRejection', console.error);
 const express = require("express");
 const mysql = require("mysql2");
 const PDFDocument = require("pdfkit");
+const ExcelJS = require("exceljs"); // 👈 IMPORTANTE
 const fs = require("fs");
 
 const app = express();
@@ -11,7 +12,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(__dirname));
 
 // ======================
-// MYSQL UNIVERSAL
+// MYSQL
 // ======================
 let db;
 
@@ -176,23 +177,55 @@ app.get("/pdf/:codigo", async (req, res) => {
 });
 
 // ======================
-// BACKUP
+// BACKUP EXCEL
 // ======================
 app.get("/backup", async (req, res) => {
   try {
     const [rows] = await db.promise().query("SELECT * FROM cupones");
 
-    res.setHeader("Content-Type", "application/json");
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Cupones");
+
+    worksheet.columns = [
+      { header: "ID", key: "id", width: 10 },
+      { header: "Código", key: "codigo", width: 20 },
+      { header: "Cliente", key: "cliente", width: 25 },
+      { header: "Teléfono", key: "telefono", width: 15 },
+      { header: "DPI", key: "dpi", width: 20 },
+      { header: "Monto", key: "monto", width: 15 },
+      { header: "Estado", key: "usado", width: 15 },
+    ];
+
+    rows.forEach(c => {
+      worksheet.addRow({
+        id: c.id,
+        codigo: c.codigo,
+        cliente: c.cliente,
+        telefono: c.telefono,
+        dpi: c.dpi,
+        monto: c.monto,
+        usado: c.usado ? "USADO" : "ACTIVO"
+      });
+    });
+
+    worksheet.getRow(1).font = { bold: true };
+
     res.setHeader(
-      "Content-Disposition",
-      "attachment; filename=backup_cupones.json"
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     );
 
-    res.send(JSON.stringify(rows, null, 2));
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=backup_cupones.xlsx"
+    );
+
+    await workbook.xlsx.write(res);
+    res.end();
 
   } catch (error) {
     console.error("❌ ERROR BACKUP:", error);
-    res.send("Error backup");
+    res.send("Error generando Excel");
   }
 });
 
@@ -228,7 +261,7 @@ app.get("/admin", async (req, res) => {
       text-decoration:none;
       font-weight:bold;
     ">
-      📥 Descargar Backup
+      📥 Descargar Excel
     </a>
 
     <br><br>
