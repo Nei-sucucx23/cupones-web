@@ -40,15 +40,7 @@ if (process.env.MYSQL_URL) {
     password: "fr@ctales", // 👈 CAMBIA SI ES DIFERENTE
     database: "cupones_db"
   });
-}
 
-db.connect(err => {
-  if (err) {
-    console.error("❌ MySQL error:", err);
-    process.exit(1);
-  }
-  console.log("✅ MySQL conectado");
-});
 
 // ======================
 // RUTA TEST (IMPORTANTE)
