@@ -230,60 +230,88 @@ app.get("/backup", async (req, res) => {
 });
 
 // ======================
-// ADMIN
+// ADMIN (ANTI-ERROR)
 // ======================
 app.get("/admin", async (req, res) => {
-  const [rows] = await db.promise().query("SELECT * FROM cupones ORDER BY id DESC");
+  try {
+    const [rows] = await db.promise().query(
+      "SELECT * FROM cupones ORDER BY id DESC LIMIT 50"
+    );
 
-  let lista = rows.map(c => `
-    <tr>
-      <td>${c.codigo}</td>
-      <td>${c.cliente}</td>
-      <td>${c.telefono}</td>
-      <td>${c.dpi}</td>
-      <td>Q${c.monto}</td>
-      <td style="color:${c.usado ? 'red' : 'lime'}">
-        ${c.usado ? 'USADO' : 'ACTIVO'}
-      </td>
-      <td><a href="/delete/${c.id}" style="color:red">Eliminar</a></td>
-    </tr>
-  `).join("");
+    let lista = "";
 
-  res.send(`
-  <body style="background:#000;color:white;font-family:sans-serif;text-align:center">
-    <h1>📊 Panel Admin</h1>
+    if (rows.length === 0) {
+      lista = `
+        <tr>
+          <td colspan="6" style="padding:20px;color:gray">
+            No hay registros aún
+          </td>
+        </tr>
+      `;
+    } else {
+      lista = rows.map(c => `
+        <tr>
+          <td>${c.codigo}</td>
+          <td>${c.cliente}</td>
+          <td>${c.telefono}</td>
+          <td>${c.dpi}</td>
+          <td>Q${c.monto}</td>
+          <td style="color:${c.usado ? 'red' : 'lime'}">
+            ${c.usado ? 'USADO' : 'ACTIVO'}
+          </td>
+          <td>
+            <a href="/delete/${c.id}" style="color:red">Eliminar</a>
+          </td>
+        </tr>
+      `).join("");
+    }
 
-    <a href="/backup" style="
-      background:gold;
-      color:black;
-      padding:10px 20px;
-      border-radius:10px;
-      text-decoration:none;
-      font-weight:bold;
-    ">
-      📥 Descargar Excel
-    </a>
+    res.send(`
+    <body style="background:#000;color:white;font-family:sans-serif;text-align:center">
+      <h1>📊 Panel Admin</h1>
 
-    <br><br>
+      <a href="/backup" style="
+        background:gold;
+        color:black;
+        padding:10px 20px;
+        border-radius:10px;
+        text-decoration:none;
+        font-weight:bold;
+      ">
+        📥 Descargar Excel
+      </a>
 
-    <table style="width:95%;margin:auto;border-collapse:collapse">
-      <tr style="background:gold;color:black">
-        <th>Código</th>
-        <th>Cliente</th>
-        <th>Teléfono</th>
-        <th>DPI</th>
-        <th>Monto</th>
-        <th>Estado</th>
-        <th>Acción</th>
-      </tr>
-      ${lista}
-    </table>
+      <br><br>
 
-    <br><a href="/" style="color:gold">Volver</a>
-  </body>
-  `);
+      <table style="width:95%;margin:auto;border-collapse:collapse">
+        <tr style="background:gold;color:black">
+          <th>Código</th>
+          <th>Cliente</th>
+          <th>Teléfono</th>
+          <th>DPI</th>
+          <th>Monto</th>
+          <th>Estado</th>
+          <th>Acción</th>
+        </tr>
+        ${lista}
+      </table>
+
+      <br><a href="/" style="color:gold">Volver</a>
+    </body>
+    `);
+
+  } catch (error) {
+    console.error("❌ ERROR ADMIN:", error);
+
+    res.send(`
+      <body style="background:#000;color:white;text-align:center;font-family:sans-serif">
+        <h1 style="color:red">Error cargando admin</h1>
+        <p>Revisa la conexión a la base de datos</p>
+        <a href="/" style="color:gold">Volver</a>
+      </body>
+    `);
+  }
 });
-
 // ======================
 // DELETE
 // ======================
