@@ -11,13 +11,14 @@ const app = express();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(__dirname));
 
-// ======================
-// MYSQL FIJO (RAILWAY SEGURO)
-// ======================
 let db;
 
-if (process.env.MYSQLHOST) {
-  console.log("🌍 Usando DB de Railway (modo seguro)");
+try {
+  console.log("Variables:");
+  console.log("HOST:", process.env.MYSQLHOST);
+  console.log("USER:", process.env.MYSQLUSER);
+  console.log("DB:", process.env.MYSQLDATABASE);
+  console.log("PORT:", process.env.MYSQLPORT);
 
   db = mysql.createConnection({
     host: process.env.MYSQLHOST,
@@ -25,21 +26,21 @@ if (process.env.MYSQLHOST) {
     password: process.env.MYSQLPASSWORD,
     database: process.env.MYSQLDATABASE,
     port: process.env.MYSQLPORT,
-    ssl: {
-      rejectUnauthorized: false
+    ssl: { rejectUnauthorized: false }
+  });
+
+  db.connect((err) => {
+    if (err) {
+      console.error("❌ ERROR CONECTANDO MYSQL:", err);
+    } else {
+      console.log("✅ MYSQL CONECTADO");
     }
   });
 
-} else {
-  console.log("💻 Usando DB local");
-
-  db = mysql.createConnection({
-    host: "localhost",
-    user: "root",
-    password: "fr@ctales",
-    database: "cupones_db"
-  });
+} catch (error) {
+  console.error("❌ ERROR GENERAL MYSQL:", error);
 }
+
 // ======================
 // HOME
 // ======================
