@@ -12,22 +12,22 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(__dirname));
 
 // ======================
-// MYSQL
+// MYSQL FIJO (RAILWAY SEGURO)
 // ======================
 let db;
 
-if (process.env.MYSQL_URL) {
-  console.log("🌍 Usando DB de Railway");
-
-  const url = new URL(process.env.MYSQL_URL);
+if (process.env.MYSQLHOST) {
+  console.log("🌍 Usando DB de Railway (modo seguro)");
 
   db = mysql.createConnection({
-    host: url.hostname,
-    port: url.port,
-    user: url.username,
-    password: url.password,
-    database: url.pathname.replace("/", ""),
-    ssl: { rejectUnauthorized: false }
+    host: process.env.MYSQLHOST,
+    user: process.env.MYSQLUSER,
+    password: process.env.MYSQLPASSWORD,
+    database: process.env.MYSQLDATABASE,
+    port: process.env.MYSQLPORT,
+    ssl: {
+      rejectUnauthorized: false
+    }
   });
 
 } else {
@@ -40,7 +40,6 @@ if (process.env.MYSQL_URL) {
     database: "cupones_db"
   });
 }
-
 // ======================
 // HOME
 // ======================
