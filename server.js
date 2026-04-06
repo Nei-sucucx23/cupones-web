@@ -21,13 +21,13 @@ try {
   console.log("PORT:", process.env.MYSQLPORT);
 
   db = mysql.createConnection({
-    host: process.env.MYSQLHOST,
-    user: process.env.MYSQLUSER,
-    password: process.env.MYSQLPASSWORD,
-    database: process.env.MYSQL_DATABASE,
-    port: process.env.MYSQLPORT,
-    ssl: { rejectUnauthorized: false }
-  });
+  host: process.env.MYSQLHOST,
+  user: process.env.MYSQLUSER,
+  password: process.env.MYSQLPASSWORD,
+  database: process.env.MYSQLDATABASE, // ✅ correcto
+  port: process.env.MYSQLPORT,
+  ssl: { rejectUnauthorized: false }
+});
 
   db.connect((err) => {
     if (err) {
